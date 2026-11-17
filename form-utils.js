@@ -22,6 +22,6 @@
   if(n.length>8)result+='-'+n.slice(8,10);
   return result;
  }
- function filesError(files){const oversized=files.filter(f=>f.size>20*1024*1024);return oversized.length?'Размер каждого файла — до 20 МБ. Уменьшите крупные файлы или укажите ссылку на проект.':''}
+ function filesError(files){if(files.length>5)return 'Можно приложить до 5 файлов.';if(files.some(f=>f.size>20*1024*1024))return 'Размер каждого файла — до 20 МБ.';if(files.reduce((sum,f)=>sum+f.size,0)>25*1024*1024)return 'Суммарный размер файлов — до 25 МБ.';if(files.some(f=>! /\.(pdf|dwg|dxf|xls|xlsx|docx|zip)$/i.test(f.name)))return 'Допустимы PDF, DWG, DXF, XLS, XLSX, DOCX, ZIP.';return ''}
  const api={phoneError,formatPhone,filesError};if(typeof module==='object'&&module.exports)module.exports=api;else root.FormUtils=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -50,3 +50,9 @@ exports/
 backups/
 .vscode/
 .idea/
+server/vendor/
+config.local.php
+caplock.config.php
+queue/
+private/
+sessions/
