@@ -14,6 +14,15 @@ function comment(array $job, ?string $card = null, array $links = [], bool $html
 {
     $lines = ['CUP-LOCK: ' . $job['id']];
     foreach ($job['data'] as $key=>$value) { if ($value !== '') { $lines[] = $key . ': ' . $value; } }
+    if (isset($job['consent']['version'])) {
+        $proof = $job['consent'];
+        $lines[] = 'Согласие: ' . $proof['version'];
+        $lines[] = 'Подтверждено (UTC): ' . $proof['confirmed_at'];
+        $lines[] = 'Документ: ' . $proof['url'];
+        $lines[] = 'SHA-256 документа: ' . $proof['document_sha256'];
+        $lines[] = 'Отметка: ' . $proof['checkbox_text'];
+        $lines[] = 'Копия текста согласия: ' . trim(html_entity_decode(strip_tags($proof['document_html']), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    }
     if ($job['files']) {
         $lines[] = 'Вложения: ' . implode(', ', array_column($job['files'], 'name'));
         foreach ($links as $link) { $lines[] = 'Файл в CRM (требуется авторизация): ' . $link; }

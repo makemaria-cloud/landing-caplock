@@ -1,6 +1,7 @@
 .form-trap{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}
 .consent-control{display:flex;align-items:flex-start;gap:10px;line-height:1.5;margin:16px 0;font-size:13px}
 .consent-control[hidden]{display:none}
+.consent-control a{color:#555;text-decoration:underline;text-underline-offset:3px}.consent-control a:focus-visible{outline:2px solid #a33817;outline-offset:3px}
 .consent-control input[type=checkbox]{width:18px;height:18px;flex:0 0 18px;margin:2px 0 0}
 #form-status{overflow-wrap:anywhere;font-size:14px;line-height:1.6;min-height:24px}
 #lead-form[data-state=error] #form-status{color:#a33817}

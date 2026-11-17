@@ -19,6 +19,7 @@ try {
     }
     require $app . '/core.php';
     $c = \Caplock\config();
+    $document = \Caplock\consentDocument($c);
     if (realpath($c['document_root']) !== $root || ($_SERVER['HTTPS'] ?? '') !== 'on') {
         \Caplock\fail(503, 'Прием заявок пока недоступен.');
     }
@@ -33,14 +34,17 @@ try {
     $csrf = $_SESSION['csrf'];
     session_write_close();
     if ($method === 'GET') {
-        $reply(200, ['csrf'=>$csrf,'consent_text'=>$c['consent_text']]);
+        $reply(200, ['csrf'=>$csrf,'consent_text'=>$document['checkbox_text'],
+            'consent_version'=>$document['version'],'consent_url'=>$document['url'],
+            'consent_sha256'=>$document['document_sha256']]);
     }
     \Caplock\guard($_SERVER, $_POST, $csrf, $c['origin']);
+    \Caplock\verifyConsent($_POST, $document);
     \Caplock\rate($c, $_SERVER['REMOTE_ADDR'] ?? 'unknown');
     $d = \Caplock\validate($_POST, $c['origin']);
     $files = \Caplock\uploads($_FILES);
     $id = \Caplock\text($_POST, 'idempotency_key', 32, true);
-    $result = \Caplock\enqueue($c, $id, $d, $files);
+    $result = \Caplock\enqueue($c, $id, $d, $files, null, $document);
     $reply(202, $result);
 } catch (\Throwable $e) {
     if ($e instanceof \Caplock\HttpError) { $reply($e->status, ['error'=>$e->getMessage()]); }

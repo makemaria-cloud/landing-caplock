@@ -2,8 +2,8 @@
 declare(strict_types=1);
 return [
     'enabled' => false,
-    'consent_approved' => false,
-    'consent_text' => '',
+    'consent_approved' => true,
+    'consent_text' => 'Я даю согласие на обработку персональных данных.',
     'origin' => 'https://caplock.dayagroup.ru',
     'document_root' => '/home/ACCOUNT/caplock.dayagroup.ru/htdocs',
     'storage' => '/home/ACCOUNT/caplock-private/queue',

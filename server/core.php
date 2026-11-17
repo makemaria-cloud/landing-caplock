@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Caplock;
+require_once __DIR__ . '/consent.php';
 
 final class HttpError extends \RuntimeException
 {
@@ -34,7 +35,7 @@ function ready(array $c): void
     $u = parse_url($r['webhook'] ?? '');
     $portal = parse_url($r['portal'] ?? '');
     if (($c['enabled'] ?? false) !== true || ($c['consent_approved'] ?? false) !== true
-        || !is_string($c['consent_text'] ?? null) || trim($c['consent_text']) === ''
+        || ($c['consent_text'] ?? '') !== CONSENT_LABEL
         || ($c['origin'] ?? '') !== 'https://caplock.dayagroup.ru'
         || !$storage || !$root || !outside($storage, $root) || !is_writable($storage)
         || strlen($c['rate_key'] ?? '') < 32 || !is_file(__DIR__ . '/vendor/autoload.php')
@@ -183,11 +184,12 @@ function fingerprint(array $d, array $files, string $key): string
 {
     return hash_hmac('sha256', json_encode([$d, array_map(fn($f)=>[$f['sha256'],$f['size']], $files)], JSON_THROW_ON_ERROR), $key);
 }
-function enqueue(array $c, string $id, array $d, array $files, ?callable $move = null): array
+function enqueue(array $c, string $id, array $d, array $files, ?callable $move = null, ?array $document = null): array
 {
     if (!preg_match('/^[a-f0-9]{32}$/D', $id)) { fail(422, 'Обновите страницу: нет идентификатора заявки.'); }
+    $document ??= consentDocument($c);
     $fp = fingerprint($d, $files, $c['rate_key']); $storage = $c['storage'];
-    return locked($storage, function () use ($c, $id, $d, $files, $fp, $storage, $move) {
+    return locked($storage, function () use ($c, $id, $d, $files, $fp, $storage, $move, $document) {
         $path = "$storage/$id.json";
         if (is_file($path)) {
             $old = read($path);
@@ -210,7 +212,7 @@ function enqueue(array $c, string $id, array $d, array $files, ?callable $move =
             }
             $channel = ['status'=>'pending','attempts'=>0,'next'=>0];
             atomic($path, ['id'=>$id,'fingerprint'=>$fp,'created'=>time(),'data'=>$d,'files'=>$stored,
-                'consent'=>['approved'=>true,'text_sha256'=>hash('sha256', $c['consent_text'])],
+                'consent'=>array_merge($document, ['approved'=>true,'confirmed_at'=>gmdate('c')]),
                 'crm'=>$channel,'email'=>$channel,'crm_comment'=>$channel]);
         } catch (\Throwable $e) {
             foreach (glob($dir . '/*') as $f) { unlink($f); } rmdir($dir); throw $e;

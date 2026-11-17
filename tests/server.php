@@ -21,12 +21,22 @@ mkdir($tmp, 0700);
 $root = realpath($tmp);
 try {
     mkdir($tmp . '/public', 0700);
+    copy(__DIR__ . '/../consent-2026-11-17.html', $tmp . '/public/consent-2026-11-17.html');
     mkdir($tmp . '/queue', 0700);
     $c = require __DIR__ . '/../server/config.example.php';
     $c['storage'] = $tmp . '/queue';
     $c['document_root'] = $tmp . '/public';
     $c['rate_key'] = str_repeat('test-only-', 8);
-    $c['consent_text'] = 'Test only, not approved wording';
+    $c['consent_text'] = Caplock\CONSENT_LABEL;
+    $document = Caplock\consentDocument($c);
+    check($document['version']==='2026-11-17-v1', 'Consent version');
+    check($document['document_sha256']===hash_file('sha256',$tmp.'/public/consent-2026-11-17.html'), 'Consent document hash');
+    $confirmation=['consent'=>'1','consent_version'=>$document['version'],'consent_sha256'=>$document['document_sha256']];
+    Caplock\verifyConsent($confirmation,$document);
+    check(true, 'Consent confirmation accepted');
+    rejected(fn()=>Caplock\verifyConsent(array_replace($confirmation,['consent'=>'']),$document),422);
+    rejected(fn()=>Caplock\verifyConsent(array_replace($confirmation,['consent_version'=>'old']),$document),422);
+    rejected(fn()=>Caplock\verifyConsent(array_replace($confirmation,['consent_sha256'=>str_repeat('0',64)]),$document),422);
     $p = ['phone'=>'+7 (999) 123-45-67','city'=>'Test city','email'=>'test@example.invalid',
         'mode'=>'project','page'=>'https://caplock.dayagroup.ru/','details'=>'<script>bad()</script>[url]'];
     $d = Caplock\validate($p, $c['origin']);
@@ -68,11 +78,15 @@ try {
     $c['crm']['id_field']='UF_CRM_TEST_ID';
     $c['crm']['source_value']='TEST_ONLY';
     $job = Caplock\read($c['storage'].'/'.$id.'.json');
+    check($job['consent']['document_html']===$document['document_html'],'Consent snapshot retained');
+    check(!empty($job['consent']['confirmed_at']),'Consent timestamp retained');
     $fields = Caplock\leadFields($c,$job);
     check($fields['ASSIGNED_BY_ID']===32427,'Responsible mapping');
     check($fields['UF_CRM_1667293827361']==='Test city','Dadata mapping');
     check($fields['EMAIL'][0]['VALUE']==='test@example.invalid','Email mapping');
     check(!str_contains($fields['COMMENTS'],'<script>'),'HTML escaped');
+    check(str_contains($fields['COMMENTS'],'Согласие: 2026-11-17-v1'),'Consent proof in CRM');
+    check(str_contains(Caplock\comment($job,null,[],false),'Копия текста согласия:'),'Consent snapshot in email');
     $relative = '/bitrix/components/bitrix/crm.lead.show/show_file.php?ownerId=5&fieldName=UF_CRM_TEST_FILES&dynamic=Y&fileId=42';
     check(Caplock\safeFileUrl($relative,$c,5)===$c['crm']['portal'].$relative,'CRM file link and port');
     foreach (['https://evil.invalid'.$relative,'//evil.invalid'.$relative,$relative.'&auth=SECRET',str_replace('ownerId=5','ownerId=6',$relative)] as $url) {
